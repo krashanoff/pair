@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import ControlledEditor from '@monaco-editor/react';
 import { useParams } from 'react-router-dom';
 
@@ -14,6 +14,7 @@ export default function Code(props) {
   const [value, setValue] = useState("const a = \"Heyo Default, welcome to pair.\";");
   const [width, setWidth] = useState(window.innerWidth);
   const [height, setHeight] = useState(window.innerHeight);
+  const ws = useRef(null);
 
   useEffect(() => {
     const listener = () => {
@@ -25,18 +26,25 @@ export default function Code(props) {
     return () => window.removeEventListener("resize", listener);
   });
 
-  let broadcast;
+  // Create the websocket.
   useEffect(() => {
-    let socket = new WebSocket(`wss://pear.krashanoff.com/${params.id || "new"}`);
-    socket.onopen = () => console.log("Opened socket.");
-    socket.onmessage = m => console.log(`New message! ${m}`);
-    socket.onclose = () => console.log("Closed socket.");
-    socket.onerror = () => console.log("Encountered an error!");
+    ws.current = new WebSocket(`wss://localhost:8081/s/${params.id}`);
+    ws.current.onopen = () => console.log("Opened socket.");
+    ws.current.onmessage = m => console.log(`New message! ${m}`);
+    ws.current.onclose = () => console.log("Closed socket.");
+    ws.current.onerror = () => console.log("Encountered an error!");
 
-    broadcast = socket.CLOSED ? (() => null) : socket.send;
-
-    return socket.CLOSED ? (() => null) : socket.close;
+    return ws.current.CLOSED ? undefined : socket.close;
   });
+  
+  if (!ws.current) {
+    console.log(ws.current);
+    return (
+      <>
+        <h1>Your pair session could not be found.</h1>
+      </>
+    );
+  }
 
   return (
     <>
@@ -64,7 +72,7 @@ export default function Code(props) {
         onChange={(e, v) => {
           console.log("Some change");
           console.log(e, v);
-          broadcast({
+          ws.current.send({
             event: "write",
             val: v,
           });
