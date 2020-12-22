@@ -1,84 +1,69 @@
 import React, {useState, useEffect, useRef} from 'react';
-import ControlledEditor from '@monaco-editor/react';
+import { Controlled as CodeMirror } from 'react-codemirror2';
 import { useParams } from 'react-router-dom';
+import 'codemirror/lib/codemirror.css';
+import 'codemirror/theme/material.css';
 
 //
 // Code
 //
 // Work on code together from a controlled
-// Monaco.
+// CodeMirror.
 //
 
-export default function Code(props) {
+export default function Code() {
   const params = useParams();
-  const [value, setValue] = useState("const a = \"Heyo Default, welcome to pair.\";");
-  const [width, setWidth] = useState(window.innerWidth);
-  const [height, setHeight] = useState(window.innerHeight);
+  const [value, setValue] = useState("def main():\n    print('hi')\n");
+  const [buf, setBuf] = useState([]);
   const ws = useRef(null);
-
-  useEffect(() => {
-    const listener = () => {
-      setWidth(window.innerWidth);
-      setHeight(window.innerHeight);
-    };
-
-    window.addEventListener("resize", listener);
-    return () => window.removeEventListener("resize", listener);
-  });
 
   // Create the websocket.
   useEffect(() => {
-    ws.current = new WebSocket(`wss://localhost:8081/s/${params.id}`);
+    if (ws.current)
+      return;
+
+    ws.current = new WebSocket(`ws://localhost:8081/s/${params.id}`);
     ws.current.onopen = () => console.log("Opened socket.");
-    ws.current.onmessage = m => console.log(`New message! ${m}`);
-    ws.current.onclose = () => console.log("Closed socket.");
-    ws.current.onerror = () => console.log("Encountered an error!");
+    ws.current.onmessage = m => {
+      console.log(`New message! ${m.value}`);
+      setBuf(buf.concat([m]));
+    }
+    ws.current.onclose = () => {
+      console.log("Closed socket.");
+      ws.current = null;
+    }
+    ws.current.onerror = () => {
+      console.log("Encountered an error!");
+      ws.current = null;
+    }
 
-    return ws.current.CLOSED ? undefined : socket.close;
+    return ws.current ? undefined : socket.close;
   });
-  
-  if (!ws.current) {
-    console.log(ws.current);
-    return (
-      <>
-        <h1>Your pair session could not be found.</h1>
-      </>
-    );
-  }
 
+  if (!ws.current)
+    return <h1>Connection failure.</h1>
+  
   return (
-    <>
-      <ControlledEditor
-        language="javascript"
-        width={width}
-        height={height}
-        theme="dark"
-        value={value}
-        options={{
-          contextmenu: false,
-          copyWithSyntaxHighlighting: true,
-          scrollbar: false,
-          fontFamily: "Fira Code",
-          fontLigatures: true,
-          fontSize: 14,
-          minimap: {
-            enabled: false,
-          },
-          renderIndicators: false,
-          roundedSelection: true,
-          smoothScrolling: true,
-          wordWrap: "on",
-        }}
-        onChange={(e, v) => {
-          console.log("Some change");
-          console.log(e, v);
-          ws.current.send({
-            event: "write",
-            val: v,
-          });
-          setValue(v);
-        }}
-      />
-    </>
+    <CodeMirror
+      autoCursor={true}
+      autoScroll={true}
+      options={{
+        mode: 'python',
+        theme: 'material',
+        lineNumbers: true,
+        indentUnit: 2,
+        indentWithTabs: false,
+        smartIndent: true,
+        showCursorWhenSelecting: true,
+      }}
+      value={value}
+      onBeforeChange={(_e, _d, v) => {
+        setValue(v);
+      }}
+      onChange={(e, d, v) => {
+        console.info(e, d, v);
+        ws.current.send(v);
+      }}
+    />
   );
 }
