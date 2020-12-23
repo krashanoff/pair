@@ -1,6 +1,7 @@
 import React, {useState, useEffect, useRef} from 'react';
 import { Controlled as CodeMirror } from 'react-codemirror2';
 import { useParams } from 'react-router-dom';
+import 'codemirror/keymap/sublime.js';
 import 'codemirror/lib/codemirror.css';
 import 'codemirror/theme/material.css';
 
@@ -14,7 +15,6 @@ import 'codemirror/theme/material.css';
 export default function Code() {
   const params = useParams();
   const [value, setValue] = useState("def main():\n    print('hi')\n");
-  const [buf, setBuf] = useState([]);
   const ws = useRef(null);
 
   // Create the websocket.
@@ -25,8 +25,8 @@ export default function Code() {
     ws.current = new WebSocket(`ws://localhost:8081/s/${params.id}`);
     ws.current.onopen = () => console.log("Opened socket.");
     ws.current.onmessage = m => {
-      console.log(`New message! ${m.value}`);
-      setBuf(buf.concat([m]));
+      console.log(`New message! ${m}`);
+      setValue(m);
     }
     ws.current.onclose = () => {
       console.log("Closed socket.");
@@ -50,6 +50,7 @@ export default function Code() {
       options={{
         mode: 'python',
         theme: 'material',
+        keyMap: 'sublime',
         lineNumbers: true,
         indentUnit: 2,
         indentWithTabs: false,

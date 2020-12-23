@@ -9,6 +9,12 @@ import (
 	"golang.org/x/net/websocket"
 )
 
+//
+// pear
+//
+// Simple websocket arbiter.
+//
+
 // Thread-safe session.
 type Session struct {
 	Code    string `json:"code"`
@@ -41,16 +47,15 @@ func (s *Session) Fwd(msg string) error {
 	return nil
 }
 
-var sessions map[string]Session
-
 func main() {
 	e := echo.New()
+	e.HideBanner = true
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORS())
 
 	// Used to buffer all session reads and writes.
-	sessions = make(map[string]Session)
+	sessions := make(map[string]Session)
 
 	// Start a session.
 	e.POST("/new", func(c echo.Context) error {
@@ -71,10 +76,6 @@ func main() {
 
 		websocket.Handler(func(ws *websocket.Conn) {
 			defer ws.Close()
-			err := websocket.Message.Send(ws, "INFO: Connection OK.")
-			if err != nil {
-				c.Logger().Error(err)
-			}
 
 			session.clients = append(session.clients, ws)
 
@@ -82,12 +83,15 @@ func main() {
 			// Kill session after last person leaves.
 			for {
 				msg := ""
-				err = websocket.Message.Receive(ws, &msg)
+				err := websocket.Message.Receive(ws, &msg)
 				if err != nil {
 					c.Logger().Error(err)
 
+					// TODO: handle removal of connection.
+
 					// Check if need to delete.
 					if len(session.clients) == 0 {
+						// TODO: add timeout
 						delete(sessions, c.Param("id"))
 						c.Logger().Printf("Killed session id: %s", c.Param("id"))
 						break
