@@ -14,6 +14,7 @@ import 'codemirror/theme/material.css';
 
 export default function Code() {
   const params = useParams();
+  const [socketState, setSocketState] = useState(-1);
   const [value, setValue] = useState("def main():\n    print('hi')\n");
   const ws = useRef(null);
 
@@ -23,25 +24,33 @@ export default function Code() {
       return;
 
     ws.current = new WebSocket(`ws://localhost:8081/s/${params.id}`);
-    ws.current.onopen = () => console.log("Opened socket.");
+    ws.current.onopen = () => {
+      console.log("Opened socket.");
+      setSocketState(0);
+    }
     ws.current.onmessage = m => {
-      console.log(`New message! ${m}`);
-      setValue(m);
+      setValue(m.data);
+      setSocketState(1);
     }
     ws.current.onclose = () => {
       console.log("Closed socket.");
       ws.current = null;
+      setSocketState(0);
     }
     ws.current.onerror = () => {
       console.log("Encountered an error!");
       ws.current = null;
+      setSocketState(-1);
     }
 
     return ws.current ? undefined : socket.close;
   });
 
-  if (!ws.current)
+  if (socketState < 0)
     return <h1>Connection failure.</h1>
+  
+  if (socketState === 0)
+    return <h1>Socket is empty!</h1>
   
   return (
     <CodeMirror
@@ -53,17 +62,13 @@ export default function Code() {
         keyMap: 'sublime',
         lineNumbers: true,
         indentUnit: 2,
-        indentWithTabs: false,
         smartIndent: true,
         showCursorWhenSelecting: true,
       }}
       value={value}
       onBeforeChange={(_e, _d, v) => {
-        setValue(v);
-      }}
-      onChange={(e, d, v) => {
-        console.info(e, d, v);
         ws.current.send(v);
+        setValue(v);
       }}
     />
   );

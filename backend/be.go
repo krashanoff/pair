@@ -15,30 +15,41 @@ import (
 // Simple websocket arbiter.
 //
 
-// Thread-safe session.
+// Thread-safe session management.
 type Session struct {
-	Code    string `json:"code"`
-	clients []*websocket.Conn
+	code    string
+	clients map[*websocket.Conn]bool
 	lock    chan bool
 }
 
 func NewSession() (s Session) {
 	s = Session{
-		Code:    "",
-		clients: []*websocket.Conn{},
+		code:    "console.log(\"Welcome to pair!\");\n",
+		clients: make(map[*websocket.Conn]bool),
 		lock:    make(chan bool, 1),
 	}
 	s.lock <- false
 	return
 }
-func (s *Session) AddClient(ws *websocket.Conn) {
+func (s *Session) AddClient(ws *websocket.Conn) error {
 	<-s.lock
-	s.clients = append(s.clients, ws)
+	if err := websocket.Message.Send(ws, s.code); err != nil {
+		return err
+	}
+	s.clients[ws] = true
 	s.lock <- false
+	return nil
+}
+func (s *Session) RemoveClient(ws *websocket.Conn) error {
+	<-s.lock
+	ws.Close()
+	delete(s.clients, ws)
+	s.lock <- false
+	return nil
 }
 func (s *Session) Fwd(msg string) error {
 	<-s.lock
-	for _, c := range s.clients {
+	for c := range s.clients {
 		if err := websocket.Message.Send(c, msg); err != nil {
 			return err
 		}
@@ -75,9 +86,9 @@ func main() {
 		}
 
 		websocket.Handler(func(ws *websocket.Conn) {
-			defer ws.Close()
-
-			session.clients = append(session.clients, ws)
+			if err := session.AddClient(ws); err != nil {
+				return
+			}
 
 			// Forward packets to everyone in the network.
 			// Kill session after last person leaves.
@@ -85,24 +96,26 @@ func main() {
 				msg := ""
 				err := websocket.Message.Receive(ws, &msg)
 				if err != nil {
-					c.Logger().Error(err)
-
-					// TODO: handle removal of connection.
-
-					// Check if need to delete.
-					if len(session.clients) == 0 {
-						// TODO: add timeout
-						delete(sessions, c.Param("id"))
-						c.Logger().Printf("Killed session id: %s", c.Param("id"))
-						break
-					}
+					c.Logger().Errorf("Error encountered: %s. Closing socket.", err)
+					session.RemoveClient(ws)
+					break
 				}
+				c.Logger().Infof("RECV: %s", msg)
+				session.code = msg
 
 				if err := session.Fwd(msg); err != nil {
 					c.Logger().Printf("Forwarded message: %s", msg)
 				}
 			}
 		}).ServeHTTP(c.Response(), c.Request())
+
+		// Check if we need to delete the session.
+		if len(session.clients) == 0 {
+			c.Logger().Infof("Destroying session ID %s.", c.Param("id"))
+			go func() {
+				delete(sessions, c.Param("id"))
+			}()
+		}
 
 		return nil
 	})
