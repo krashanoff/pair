@@ -1,7 +1,7 @@
 .edit-control-modal {
     position: absolute;
     bottom: 0.5rem;
-    right: 0.5rem;
+    left: 0.5rem;
     background: white;
     padding: 2rem;
     z-index: 5;

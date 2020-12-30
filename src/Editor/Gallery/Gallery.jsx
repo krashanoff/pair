@@ -53,6 +53,7 @@ export default function Gallery(props) {
           onClick={() => setStart(Math.max(0, start - 1))}
           value="Back"
         />
+        <span>Your name is {props.name || "undefined for some reason."}</span>
         <input
           type="button"
           onClick={() => setStart((start + 1) % props.users.length)}

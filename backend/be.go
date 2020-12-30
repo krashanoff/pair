@@ -145,9 +145,7 @@ func main() {
 			c.Logger().Infof("New client '%s' connected to session with uid %s", name, uid)
 
 			// Request identification from all clients.
-			if err := websocket.Message.Send(ws, "{ type: \"IDENTIFY\" }"); err != nil {
-				return
-			}
+			session.Fwd("{ \"type\": \"IDENTIFY\" }")
 
 			// Forward packets to everyone in the network.
 			// Kill session after last person leaves.
@@ -156,10 +154,11 @@ func main() {
 				err := websocket.Message.Receive(ws, &msg)
 				if err != nil {
 					c.Logger().Errorf("Error encountered when receiving message from user '%s'. Closing socket.", name)
+					session.Fwd("{ \"type\": \"LEAVE\", \"name\": \"" + name + "\" }")
 					session.RemoveClient(name)
 					break
 				}
-				c.Logger().Infof("Received message `%s` from %s in session with uid %s", msg, name, uid)
+				c.Logger().Infof("Received message `%s` from %s in session with uid %s", msg[:150], name, uid)
 
 				if err := session.Fwd(msg); err != nil {
 					c.Logger().Error(err)

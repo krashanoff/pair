@@ -24,5 +24,6 @@ ${language === "python" ? "\"\"\"" : "*/"}
 const DEFAULT_LANG = "javascript";
 
 let SERVER_URL = "http://localhost:8081";
+let SERVER_WEBSOCKET = "ws://localhost:8081/s";
 
-export { START_MSG, DEFAULT_LANG, SERVER_URL };
+export { START_MSG, DEFAULT_LANG, SERVER_URL, SERVER_WEBSOCKET };

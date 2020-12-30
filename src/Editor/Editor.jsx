@@ -37,26 +37,88 @@ function ExitButton() {
 
 export default function Editor(props) {
   const params = useParams();
+
+  // Simple state variables for the editor controls.
   const [socketState, setSocketState] = useState(-1);
+  const [controlsActive, setControlsActive] = useState(false);
   const [value, setValue] = useState(START_MSG);
   const [language, setLanguage] = useState(DEFAULT_LANG);
-  const [controlsActive, setControlsActive] = useState(false);
+
+  // Map of names to user data.
+  const [users, setUsers] = useState([]);
+
+  // Websocket for all communication.
   const ws = useRef(props.ws || null);
+
+  // TODO: Handle name acquisition.
+  const [name, setName] = useState(`Test${Math.random()}`);
+  console.info(`Using name: ${name}`);
 
   // Create a websocket to communicate to other
   // editors if one does not exist already.
   useEffect(() => {
     if (ws.current) return;
 
-    ws.current = new WebSocket(`ws://localhost:8081/s/${params.id}?name=Test`);
+    ws.current = new WebSocket(`${SERVER_WEBSOCKET}/${params.id}?name=${name}`);
     ws.current.onopen = () => setSocketState(SOCKET_CLOSED);
     ws.current.onclose = () => setSocketState(SOCKET_CLOSED);
     ws.current.onerror = () => setSocketState(SOCKET_ERR);
 
     // The complex portion: handling websocket messages.
     ws.current.onmessage = m => {
+      const msg = JSON.parse(m.data);
+
+      // We can ignore our own updates.
+      if (msg.name === name) return;
+
+      switch (msg.type) {
+        case "IDENTIFY":
+          // Identify the user and our contents.
+          console.info("Identifying myself.");
+          ws.current.send(
+            JSON.stringify({
+              type: "IAM",
+              name,
+              value: value,
+            })
+          );
+          break;
+
+        // Received a message from someone explaining
+        // themselves.
+        case "IAM":
+          console.info("IAM Received.");
+          setUsers(
+            users.concat({
+              name: msg.name,
+              value: msg.value,
+            })
+          );
+          break;
+
+        // Someone left the session.
+        case "LEAVE":
+          console.info("Someone left!");
+          break;
+
+        // Someone tries to write to an editor. Whether
+        // it is accepted is left to fate.
+        case "TRYWRITE":
+          break;
+
+        // Someone wrote to an editor.
+        case "WRITE":
+          console.info("Write event");
+          break;
+
+        // Someone selected within an editor.
+        case "SELECT":
+          break;
+
+        // Unknown event.
+        default:
+      }
       console.info("Received a message through the websocket", m.data);
-      setSocketState(SOCKET_OK);
     };
 
     return ws.current ? undefined : socket.close;
@@ -104,7 +166,13 @@ export default function Editor(props) {
           smartIndent: true,
         }}
         onBeforeChange={(e, d, v) => {
-          ws.current.send(v);
+          ws.current.send(
+            JSON.stringify({
+              name,
+              type: "WRITE",
+              value: v,
+            })
+          );
           setValue(v);
         }}
         onChange={(e, d, v) => {
@@ -112,30 +180,7 @@ export default function Editor(props) {
         }}
       />
 
-      <Gallery
-        users={[
-          {
-            name: "A",
-            value: "example code\nline2\nline3\nline4",
-            switchTo: () => console.info("Switch to another editor."),
-          },
-          {
-            name: "B",
-            value: "example code\nline2\nline3",
-            switchTo: () => console.info("Switch to another editor."),
-          },
-          {
-            name: "C",
-            value: "example code\nline2\nline3",
-            switchTo: () => console.info("Switch to another editor."),
-          },
-          {
-            name: "E",
-            value: "example other code\nhe",
-            switchTo: () => console.info("Switch to another editor."),
-          },
-        ]}
-      />
+      <Gallery name={name} users={users} />
     </div>
   );
 }
