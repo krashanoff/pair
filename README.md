@@ -1,4 +1,6 @@
 # pair
 
-Simple pair-coding and editing. A quick experiment before making
-bigger changes to uclaacm/TeachLAFrontend.
+Collaborative coding doesn't need to be so complicated.
+
+A quick experiment before making bigger changes to
+uclaacm/TeachLAFrontend.

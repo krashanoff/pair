@@ -1,0 +1,21 @@
+.editor-container {
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: space-between;
+  width: 100vw;
+  height: 100vh;
+}
+
+.controls-toggle {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.5rem;
+  padding: 0.5rem;
+  z-index: 5;
+}
+
+.CodeMirror {
+  height: 100%;
+  width: 80vw;
+  font-family: "Fira Code", 'Courier New', Courier, monospace;
+}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -12,13 +13,14 @@ import (
 //
 // pear
 //
-// Simple websocket arbiter.
+// Simple websocket arbiter. All sessions kept
+// in memory.
 //
 
 // Thread-safe session management.
 type Session struct {
-	code    string
-	clients map[*websocket.Conn]bool
+	// Map client names to connections.
+	clients map[string]*websocket.Conn
 	lock    chan bool
 }
 
@@ -31,28 +33,23 @@ func NewSession() (s Session) {
 	s.lock <- false
 	return
 }
-func (s *Session) AddClient(ws *websocket.Conn) error {
+func (s *Session) AddClient(id string, ws *websocket.Conn) error {
 	<-s.lock
-	if err := websocket.Message.Send(ws, s.code); err != nil {
-		return err
-	}
-	s.clients[ws] = true
+	s.clients[id] = ws
 	s.lock <- false
 	return nil
 }
-func (s *Session) RemoveClient(ws *websocket.Conn) error {
+func (s *Session) RemoveClient(id string) error {
 	<-s.lock
 	ws.Close()
-	delete(s.clients, ws)
+	delete(s.clients, id)
 	s.lock <- false
 	return nil
 }
 func (s *Session) Fwd(msg string) error {
 	<-s.lock
-	for c := range s.clients {
-		if err := websocket.Message.Send(c, msg); err != nil {
-			return err
-		}
+	for id, c := range s.clients {
+		websocket.Message.Send(c, msg)
 	}
 	s.lock <- false
 	return nil
@@ -68,10 +65,20 @@ func main() {
 	// Used to buffer all session reads and writes.
 	sessions := make(map[string]Session)
 
-	// Start a session.
-	e.POST("/new", func(c echo.Context) error {
+	// Create a new session as the host with the
+	// provided password.
+
+	// TODO: if people don't join within 10 seconds,
+	// delete it.
+	e.POST("/create", func(c echo.Context) error {
 		uid := uuid.New().String()
 		sessions[uid] = NewSession()
+		go func() {
+			time.Sleep(10 * time.Second)
+			if s, ok := sessions[uid]; !ok || len(s) == 0 {
+				delete(sessions, uid)
+			}
+		}()
 		return c.String(http.StatusOK, uid)
 	})
 

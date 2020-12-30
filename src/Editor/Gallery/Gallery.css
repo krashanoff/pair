@@ -1,0 +1,34 @@
+.gallery-container {
+    min-width: 20vw;
+    height: 100%;
+    display: flex;
+    flex-flow: column wrap;
+    justify-content: space-around;
+    overflow: hidden;
+}
+
+.gallery-item :hover {
+    cursor: pointer;
+    z-index: 3;
+}
+
+.gallery-editor {
+    font-size: 0.5rem;
+}
+
+.gallery-name {
+    padding: 0.5rem;
+    font-size: 1rem;
+    background: black;
+    color: white;
+}
+
+.gallery-controls {
+    width: 100%;
+    display: flex;
+    justify-content: space-around;
+}
+
+.gallery-controls input {
+    padding: 0.5rem;
+}
