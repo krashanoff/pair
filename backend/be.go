@@ -32,7 +32,7 @@ type Session struct {
 	clients map[string]*websocket.Conn
 
 	// Software lock for thread safety.
-	lock    chan bool
+	lock chan bool
 }
 
 // NewSession returns a fresh Session.
@@ -98,7 +98,7 @@ func main() {
 		if err := c.Bind(&body); err != nil {
 			return c.String(http.StatusBadRequest, err.Error())
 		}
-		
+
 		uid := uuid.New().String()
 		sessions[uid] = NewSession()
 
