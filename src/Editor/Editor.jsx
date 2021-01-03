@@ -1,8 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useHistory, useParams } from "react-router-dom";
 import { Controlled as CodeMirror } from "react-codemirror2";
-import EditorControls from "./EditorControls/EditorControls";
-import Gallery from "./Gallery/Gallery";
 import { START_MSG, DEFAULT_LANG, SERVER_WEBSOCKET } from "../constants";
 import "codemirror/mode/javascript/javascript";
 import "codemirror/mode/python/python";
@@ -21,6 +19,7 @@ function ExitButton() {
   return (
     <input
       type="button"
+      className="exit-button"
       value={confirm ? "Are you sure?" : "Exit"}
       onClick={() => {
         if (confirm) history.push("/");
@@ -38,25 +37,51 @@ function ExitButton() {
 export default function Editor(props) {
   const params = useParams();
 
-  // Simple state variables for the editor controls.
+  const [name, setName] = useState(
+    props.name || `Random${Math.floor(Math.random() * 1000)}`
+  );
+  const [okName, setOkName] = useState(name !== undefined);
+
+  // TODO: No name? Enter one.
+  // if (!okName)
+  //   return (
+  //     <>
+  //       <input
+  //         type='text'
+  //         value={name}
+  //         onChange={e => setName(e.target.value)}
+  //       />
+  //       <input
+  //         type='button'
+  //         value="OK"
+  //         onClick={() => setOkName(false)}
+  //       />
+  //     </>
+  //   );
+
+  // State of the websocket.
   const [socketState, setSocketState] = useState(-1);
-  const [controlsActive, setControlsActive] = useState(false);
-  const [value, setValue] = useState(START_MSG);
-  const [language, setLanguage] = useState(DEFAULT_LANG);
 
-  const [viewing, setViewing] = useState(props.name);
-
-  // Map of names to basic user data.
-  const [users, setUsers] = useState({});
+  // Map of names to basic user data. Begins with
+  // our own user data.
+  const [users, setUsers] = useState({
+    [name]: {
+      value: START_MSG(DEFAULT_LANG),
+      readOnly: false,
+      switchTo: () => setViewing(name),
+    },
+  });
   let mutableUsers = { ...users };
-  console.log(users);
+  console.log(mutableUsers);
+
+  const userData = users[name];
 
   // Websocket for all communication.
   const ws = useRef(props.ws || null);
 
-  // TODO: Handle name acquisition.
-  const name = props.name;
-  console.info(`Using name: ${name}`);
+  // Control whose editor we are viewing at the moment.
+  const [viewing, setViewing] = useState(name);
+  const viewingObj = users[viewing];
 
   // Create a websocket to communicate to other
   // editors if one does not exist already.
@@ -78,12 +103,12 @@ export default function Editor(props) {
       switch (msg.type) {
         case "IDENTIFY":
           // Identify the user and our contents.
-          console.info("Identifying myself.");
+          console.info("IDENTIFY sent.");
           ws.current.send(
             JSON.stringify({
               type: "IAM",
               name,
-              value: value,
+              value: userData.value,
             })
           );
           break;
@@ -91,15 +116,12 @@ export default function Editor(props) {
         // Received a message from someone identifying
         // themselves.
         case "IAM":
-          console.info("IAM Received.");
-          if (msg.name in users) return;
+          console.info("IAM received.");
+          if (!msg.name || msg.name in users) return;
           mutableUsers[msg.name] = {
+            name: msg.name,
             value: msg.value,
             canEdit: false,
-            switchTo: () => {
-              console.log(`Switched to ${msg.name}`);
-              setViewing(msg.name);
-            },
             toggleEdit: () => {
               mutableUsers[msg.name].canEdit = !mutableUsers[msg.name].canEdit;
               setUsers(mutableUsers);
@@ -115,21 +137,11 @@ export default function Editor(props) {
           setUsers(mutableUsers);
           break;
 
-        // Someone tries to write to an editor. Whether
-        // it is accepted is left to fate.
-        case "TRYWRITE":
-          console.info("Someone tried to write to an editor");
-          break;
-
         // Someone wrote to an editor.
         case "WRITE":
           console.info("Write event");
           mutableUsers[msg.name].value = msg.value;
           setUsers(mutableUsers);
-          break;
-
-        // Someone selected within an editor.
-        case "SELECT":
           break;
 
         // Unknown event.
@@ -141,52 +153,66 @@ export default function Editor(props) {
     return ws.current ? undefined : socket.close;
   }, []);
 
-  // if (socketState === SOCKET_ERR)
-  //   return <h1>Failed to connect!</h1>;
+  if (socketState === SOCKET_ERR) return <h1>Connecting...</h1>;
 
   return (
     <div className="editor-container">
-      <div className="controls-toggle">
-        <ExitButton />
-        <input
-          type="button"
-          onClick={() => setControlsActive(true)}
-          value="Change sharing"
-        />
-      </div>
-
-      {controlsActive && (
-        <EditorControls
-          onClose={() => setControlsActive(false)}
-          users={users}
-        />
-      )}
+      <ExitButton />
 
       <CodeMirror
-        value={value}
+        value={viewingObj.value}
         options={{
-          mode: "javascript",
+          mode: DEFAULT_LANG,
           theme: "material",
           lineNumbers: true,
           tabSize: 2,
           smartIndent: true,
+          readOnly: viewingObj.readOnly,
         }}
         onBeforeChange={(e, d, v) => {
+          if (viewingObj.readOnly) return;
+          console.log("edited");
+
+          // Update value.
+          mutableUsers[name].value = v;
+
           ws.current.send(
             JSON.stringify({
-              name,
               type: "WRITE",
-              value: v,
+              ...users[name],
             })
           );
-          setValue(v);
-        }}
-        onChange={(e, d, v) => {
-          console.info(d);
         }}
       />
 
-      <Gallery name={name} users={users} />
+      <div>
+        {Object.entries(users).map(([k, v], i) => (
+          <div key={i}>
+            <input
+              type="button"
+              value={
+                k === name ? `${k} (Me)` : k === viewing ? `${k} (Viewing)` : k
+              }
+              onClick={() => setViewing(k)}
+            />
+
+            {v.readOnly ? (
+              <input
+                type="checkbox"
+                onClick={() => null}
+                onChange={() => console.info("Toggle edit")}
+              />
+            ) : (
+              <input
+                type="checkbox"
+                onClick={() => null}
+                onChange={() => console.info("Toggle edit")}
+                checked
+              />
+            )}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

@@ -9,9 +9,8 @@ import "./Landing.css";
 // The start page.
 //
 
-export default function Landing() {
+export default function Landing(props) {
   const history = useHistory();
-  const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState(null);
 
@@ -27,7 +26,7 @@ export default function Landing() {
             method: "post",
             mode: "cors",
             body: JSON.stringify({
-              name: name,
+              name: props.name,
             }),
             headers: {
               "Content-Type": "application/json",
@@ -48,20 +47,9 @@ export default function Landing() {
         <input
           name="name"
           type="text"
-          value={name}
-          onChange={e => setName(e.target.value)}
+          value={props.name}
+          onChange={e => props.setName(e.target.value)}
           required
-        />
-        <br />
-
-        <label htmlFor="password">Room Password:</label>
-        <br />
-        <input
-          name="password"
-          type="password"
-          maxLength="100"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
         />
         <br />
 

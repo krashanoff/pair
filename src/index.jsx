@@ -1,20 +1,11 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import { BrowserRouter, Route, Switch } from "react-router-dom";
-import Editor from "./Editor/Editor";
-import Landing from "./Landing/Landing";
+import App from "./App";
 import "./index.css";
 
 ReactDOM.render(
   <React.StrictMode>
-    <BrowserRouter>
-      <Switch>
-        <Route path="/s/:id">
-          <Editor name={`Test${Math.random()}`} />
-        </Route>
-        <Route path="/" component={Landing} />
-      </Switch>
-    </BrowserRouter>
+    <App />
   </React.StrictMode>,
   document.getElementById("root")
 );
