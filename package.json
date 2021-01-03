@@ -31,11 +31,12 @@
   },
   "husky": {
     "hooks": {
-      "pre-commit": "lint-staged && gofmt"
+      "pre-commit": "lint-staged"
     }
   },
   "lint-staged": {
     "*.{js,jsx}": "eslint --cache --fix",
-    "*.{js,jsx}": "prettier --write"
+    "*.{js,jsx}": "prettier --write",
+    "*.go": "gofmt -w"
   }
 }
