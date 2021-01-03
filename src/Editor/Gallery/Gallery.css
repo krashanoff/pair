@@ -9,7 +9,7 @@
 
 .gallery-item :hover {
     cursor: pointer;
-    z-index: 3;
+    z-index: 5;
 }
 
 .gallery-editor {

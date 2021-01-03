@@ -3,7 +3,7 @@ import { useHistory, useParams } from "react-router-dom";
 import { Controlled as CodeMirror } from "react-codemirror2";
 import EditorControls from "./EditorControls/EditorControls";
 import Gallery from "./Gallery/Gallery";
-import { START_MSG, DEFAULT_LANG } from "../constants";
+import { START_MSG, DEFAULT_LANG, SERVER_WEBSOCKET } from "../constants";
 import "codemirror/mode/javascript/javascript";
 import "codemirror/mode/python/python";
 import "codemirror/lib/codemirror.css";
@@ -44,14 +44,18 @@ export default function Editor(props) {
   const [value, setValue] = useState(START_MSG);
   const [language, setLanguage] = useState(DEFAULT_LANG);
 
-  // Map of names to user data.
-  const [users, setUsers] = useState([]);
+  const [viewing, setViewing] = useState(props.name);
+
+  // Map of names to basic user data.
+  const [users, setUsers] = useState({});
+  let mutableUsers = { ...users };
+  console.log(users);
 
   // Websocket for all communication.
   const ws = useRef(props.ws || null);
 
   // TODO: Handle name acquisition.
-  const [name, setName] = useState(`Test${Math.random()}`);
+  const name = props.name;
   console.info(`Using name: ${name}`);
 
   // Create a websocket to communicate to other
@@ -60,7 +64,7 @@ export default function Editor(props) {
     if (ws.current) return;
 
     ws.current = new WebSocket(`${SERVER_WEBSOCKET}/${params.id}?name=${name}`);
-    ws.current.onopen = () => setSocketState(SOCKET_CLOSED);
+    ws.current.onopen = () => setSocketState(SOCKET_OK);
     ws.current.onclose = () => setSocketState(SOCKET_CLOSED);
     ws.current.onerror = () => setSocketState(SOCKET_ERR);
 
@@ -69,7 +73,7 @@ export default function Editor(props) {
       const msg = JSON.parse(m.data);
 
       // We can ignore our own updates.
-      if (msg.name === name) return;
+      if (msg.name && msg.name === name) return;
 
       switch (msg.type) {
         case "IDENTIFY":
@@ -84,31 +88,44 @@ export default function Editor(props) {
           );
           break;
 
-        // Received a message from someone explaining
+        // Received a message from someone identifying
         // themselves.
         case "IAM":
           console.info("IAM Received.");
-          setUsers(
-            users.concat({
-              name: msg.name,
-              value: msg.value,
-            })
-          );
+          if (msg.name in users) return;
+          mutableUsers[msg.name] = {
+            value: msg.value,
+            canEdit: false,
+            switchTo: () => {
+              console.log(`Switched to ${msg.name}`);
+              setViewing(msg.name);
+            },
+            toggleEdit: () => {
+              mutableUsers[msg.name].canEdit = !mutableUsers[msg.name].canEdit;
+              setUsers(mutableUsers);
+            },
+          };
+          setUsers(mutableUsers);
           break;
 
         // Someone left the session.
         case "LEAVE":
-          console.info("Someone left!");
+          console.info(`${msg.name} left!`);
+          delete mutableUsers[msg.name];
+          setUsers(mutableUsers);
           break;
 
         // Someone tries to write to an editor. Whether
         // it is accepted is left to fate.
         case "TRYWRITE":
+          console.info("Someone tried to write to an editor");
           break;
 
         // Someone wrote to an editor.
         case "WRITE":
           console.info("Write event");
+          mutableUsers[msg.name].value = msg.value;
+          setUsers(mutableUsers);
           break;
 
         // Someone selected within an editor.
@@ -117,8 +134,8 @@ export default function Editor(props) {
 
         // Unknown event.
         default:
+          console.info("Some unknown event occurred.");
       }
-      console.info("Received a message through the websocket", m.data);
     };
 
     return ws.current ? undefined : socket.close;
@@ -141,18 +158,7 @@ export default function Editor(props) {
       {controlsActive && (
         <EditorControls
           onClose={() => setControlsActive(false)}
-          users={[
-            {
-              name: "A",
-              canEdit: false,
-              toggleEdit: () => console.info("A can now edit."),
-            },
-            {
-              name: "B",
-              canEdit: true,
-              toggleEdit: () => console.info("B can no longer edit."),
-            },
-          ]}
+          users={users}
         />
       )}
 

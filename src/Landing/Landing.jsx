@@ -25,6 +25,7 @@ export default function Landing() {
           e.preventDefault();
           fetch(`${SERVER_URL}/create`, {
             method: "post",
+            mode: "cors",
             body: JSON.stringify({
               name: name,
             }),

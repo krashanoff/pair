@@ -83,7 +83,9 @@ func main() {
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
-	e.Use(middleware.CORS())
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"http://localhost:8080", "https://pair.krashanoff.com"},
+	}))
 
 	e.HideBanner = true
 	e.Logger.SetLevel(log.INFO)

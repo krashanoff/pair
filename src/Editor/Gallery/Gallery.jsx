@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef } from "react";
 import { Controlled as CodeMirror } from "react-codemirror2";
 import "./Gallery.css";
 
@@ -44,9 +44,11 @@ export default function Gallery(props) {
 
   return (
     <div className="gallery-container">
-      {props.users.slice(start, start + 3).map((v, i) => (
-        <GalleryItem key={i} {...v} />
-      ))}
+      {Object.entries(props.users)
+        .slice(start, start + 3)
+        .map(([key, val]) => (
+          <GalleryItem key={key} name={key} {...val} />
+        ))}
       <div className="gallery-controls">
         <input
           type="button"
@@ -56,7 +58,9 @@ export default function Gallery(props) {
         <span>Your name is {props.name || "undefined for some reason."}</span>
         <input
           type="button"
-          onClick={() => setStart((start + 1) % props.users.length)}
+          onClick={() =>
+            setStart((start + 1) % Object.keys(props.users).length)
+          }
           value="Next"
         />
       </div>

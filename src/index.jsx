@@ -9,7 +9,9 @@ ReactDOM.render(
   <React.StrictMode>
     <BrowserRouter>
       <Switch>
-        <Route path="/s/:id" component={Editor} />
+        <Route path="/s/:id">
+          <Editor name={`Test${Math.random()}`} />
+        </Route>
         <Route path="/" component={Landing} />
       </Switch>
     </BrowserRouter>
