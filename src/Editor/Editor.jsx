@@ -72,7 +72,6 @@ export default function Editor(props) {
     },
   });
   let mutableUsers = { ...users };
-  console.log(mutableUsers);
 
   const userData = users[name];
 
@@ -81,7 +80,7 @@ export default function Editor(props) {
 
   // Control whose editor we are viewing at the moment.
   const [viewing, setViewing] = useState(name);
-  const viewingObj = users[viewing];
+  const viewingObj = users[viewing] ? users[viewing] : users[name];
 
   // Create a websocket to communicate to other
   // editors if one does not exist already.
@@ -121,7 +120,7 @@ export default function Editor(props) {
           mutableUsers[msg.name] = {
             name: msg.name,
             value: msg.value,
-            canEdit: false,
+            readOnly: true,
             toggleEdit: () => {
               mutableUsers[msg.name].canEdit = !mutableUsers[msg.name].canEdit;
               setUsers(mutableUsers);
@@ -139,7 +138,7 @@ export default function Editor(props) {
 
         // Someone wrote to an editor.
         case "WRITE":
-          console.info("Write event");
+          console.info(`${msg.name} wrote!`);
           mutableUsers[msg.name].value = msg.value;
           setUsers(mutableUsers);
           break;
@@ -171,17 +170,17 @@ export default function Editor(props) {
         }}
         onBeforeChange={(e, d, v) => {
           if (viewingObj.readOnly) return;
-          console.log("edited");
 
           // Update value.
           mutableUsers[name].value = v;
-
           ws.current.send(
             JSON.stringify({
               type: "WRITE",
-              ...users[name],
+              name: name,
+              value: users[name].value,
             })
           );
+          setUsers(mutableUsers);
         }}
       />
 
@@ -199,14 +198,18 @@ export default function Editor(props) {
             {v.readOnly ? (
               <input
                 type="checkbox"
-                onClick={() => null}
-                onChange={() => console.info("Toggle edit")}
+                onChange={() => {
+                  mutableUsers[k].readOnly = false;
+                  setUsers(mutableUsers);
+                }}
               />
             ) : (
               <input
                 type="checkbox"
-                onClick={() => null}
-                onChange={() => console.info("Toggle edit")}
+                onChange={() => {
+                  mutableUsers[k].readOnly = true;
+                  setUsers(mutableUsers);
+                }}
                 checked
               />
             )}
