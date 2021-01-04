@@ -9,12 +9,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <Switch>
-        <Route path="/s/:id">
-          <Editor name={name} />
-        </Route>
-        <Route path="/">
-          <Landing name={name} setName={setName} />
-        </Route>
+        <Route path="/s/:id" component={Editor} />
+        <Route path="/" component={Landing} />
       </Switch>
     </BrowserRouter>
   );

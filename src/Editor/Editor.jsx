@@ -34,30 +34,11 @@ function ExitButton() {
   );
 }
 
-export default function Editor(props) {
+export default function Editor() {
   const params = useParams();
 
-  const [name, setName] = useState(
-    props.name || `Random${Math.floor(Math.random() * 1000)}`
-  );
-  const [okName, setOkName] = useState(name !== undefined);
-
-  // TODO: No name? Enter one.
-  // if (!okName)
-  //   return (
-  //     <>
-  //       <input
-  //         type='text'
-  //         value={name}
-  //         onChange={e => setName(e.target.value)}
-  //       />
-  //       <input
-  //         type='button'
-  //         value="OK"
-  //         onClick={() => setOkName(false)}
-  //       />
-  //     </>
-  //   );
+  // The current user's name.
+  const [name, setName] = useState(`${Math.ceil(Math.random() * 1000000)}`);
 
   // State of the websocket.
   const [socketState, setSocketState] = useState(-1);
@@ -71,12 +52,11 @@ export default function Editor(props) {
       switchTo: () => setViewing(name),
     },
   });
+  const userData = users[name];
   let mutableUsers = { ...users };
 
-  const userData = users[name];
-
   // Websocket for all communication.
-  const ws = useRef(props.ws || null);
+  const ws = useRef(null);
 
   // Control whose editor we are viewing at the moment.
   const [viewing, setViewing] = useState(name);

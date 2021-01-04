@@ -11,7 +11,6 @@ import "./Landing.css";
 
 export default function Landing(props) {
   const history = useHistory();
-  const [password, setPassword] = useState("");
   const [err, setErr] = useState(null);
 
   return (
@@ -42,20 +41,9 @@ export default function Landing(props) {
             .catch(e => setErr(e));
         }}
       >
-        <label htmlFor="name">Name:</label>
-        <br />
-        <input
-          name="name"
-          type="text"
-          value={props.name}
-          onChange={e => props.setName(e.target.value)}
-          required
-        />
-        <br />
-
         <input
           type="submit"
-          value={err ? "An error occurred! Try again." : "Create!"}
+          value={err ? "An error occurred! Try again." : "Create a room!"}
         />
       </form>
     </div>
